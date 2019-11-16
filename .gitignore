@@ -75,6 +75,7 @@ CTestTestfile.cmake
 _deps
 /build
 fuzz/build_afl/
+fuzz/build_coverage/
 fuzz/build_libfuzzer/
 
 ### CMake Patch ###

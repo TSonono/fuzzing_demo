@@ -1,3 +1,5 @@
+#!/bin/bash
+
 AFL_CC=afl-gcc
 AFL_CXX=afl-g++
 initial=`pwd`
@@ -14,7 +16,21 @@ afl() {
     cmake \
     -DCMAKE_C_COMPILER=${AFL_CC} \
     -DCMAKE_CXX_COMPILER=${AFL_CXX} \
-    -DCMAKE_C_FLAGS="-O9 -std=c99 -Wall -Wextra -Wpedantic -Wshadow -Werror -fprofile-arcs -ftest-coverage -DFUZZ_TOOL=1" \
+    -DCMAKE_C_FLAGS="-O9 -std=c99 -Wall -Wextra -Wpedantic -Wshadow -Werror -DFUZZ_TOOL=1" ../../ && \
+    make
+    cd $initial
+    if [ -d "build_coverage" ]
+    then
+        cd build_coverage
+    else
+        mkdir build_coverage && \
+        cd build_coverage
+    fi
+    unset AFL_USE_ASAN && \
+    cmake \
+    -DCMAKE_C_COMPILER=${AFL_CC} \
+    -DCMAKE_CXX_COMPILER=${AFL_CXX} \
+    -DCMAKE_C_FLAGS="-O0 -g -ggdb -std=c99 -Wall -Wextra -Wpedantic -Wshadow -Werror -fprofile-arcs -ftest-coverage -DFUZZ_TOOL=1" \
     -DCMAKE_EXE_LINKER_FLAGS="-fprofile-arcs -ftest-coverage" ../../ && \
     make
     cd $initial
@@ -47,8 +63,35 @@ do_libfuzzer() {
     ./build_libfuzzer/fuzz_entry output/queue_both
 }
 
+do_covgerage() {
+    cd $initial
+    rm -rf build_coverage/coverage.info
+    rm -rf build_coverage/coverage_output
+    for f in ./input/*;
+    do
+    echo "Processing "$f" file..."
+    cat "$f" | ./build_coverage/fuzz_entry > /dev/null
+    lcov --base-directory build_coverage --directory build_coverage --capture --output-file build_coverage/coverage.info
+    done
+    for f in ./output/queue/*;
+    do
+    echo "Processing "$f" file..."
+    cat "$f" | ./build_coverage/fuzz_entry > /dev/null
+    lcov --base-directory build_coverage --directory build_coverage --capture --output-file build_coverage/coverage.info
+    done
+    for f in ./output/queue_both/*;
+    do
+    echo "Processing "$f" file..."
+    cat "$f" | ./build_coverage/fuzz_entry > /dev/null
+    lcov --base-directory build_coverage --directory build_coverage --capture --output-file build_coverage/coverage.info
+    done
+    genhtml -o build_coverage/coverage_output build_coverage/coverage.info
+    echo "Coverage report in $(pwd)/build_coverage/coverage_output/index.html"
+}
+
+
 reset() {
-    rm -rf build_afl && rm -rf build_libfuzzer && rm -rf output
+    rm -rf build_afl && rm -rf build_libfuzzer && rm -rf output && rm -rf build_coverage
     config;
 }
 
@@ -68,19 +111,21 @@ main_menu() {
 
     config;
     while true; do
-        clear
+        #clear
         read -p "Fuzzing tool
 
     [1] Americcan Fuzzy Lop
     [2] Libfuzzer
-    [3] Reset and rebuild
+    [3] Get coverage
+    [4] Reset and rebuild
     [0] Quit
 
     Select: " yn
         case $yn in
             [1]* ) do_afl;;
             [2]* ) do_libfuzzer;;
-            [3]* ) reset;;
+            [3]* ) do_covgerage;;
+            [4]* ) reset;;
             [0]* ) return 0;;
             * ) echo "Invalid";;
         esac
