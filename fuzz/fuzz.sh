@@ -14,7 +14,8 @@ afl() {
     cmake \
     -DCMAKE_C_COMPILER=${AFL_CC} \
     -DCMAKE_CXX_COMPILER=${AFL_CXX} \
-    -DCMAKE_C_FLAGS="-O9 -std=c99 -Wall -Wextra -Wpedantic -Wshadow -DFUZZ_TOOL=1" ../../ && \
+    -DCMAKE_C_FLAGS="-O9 -std=c99 -Wall -Wextra -Wpedantic -Wshadow -Werror -fprofile-arcs -ftest-coverage -DFUZZ_TOOL=1" \
+    -DCMAKE_EXE_LINKER_FLAGS="-fprofile-arcs -ftest-coverage" ../../ && \
     make
     cd $initial
 }
